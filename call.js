@@ -7,7 +7,8 @@ Function.prototype.myCall = function (context){
   // 获取其他参数
   const args = [...arguments].slice(1) // slice 获取到的是一个数组
   // 用传入的第一个参数法来调用调用 myCall 的函数
-  context.fn = this
+  const fn = Symbol()
+  context[fn] = this
   const result = context.fn(...args)
   // 将 fn 从 context 上删除，否则在 context 上会多一个 key => fn
   delete context.fn
