@@ -5,7 +5,8 @@ Function.prototype.myApply = function(context) {
   // 获取第二个参数
   const secArg = arguments[1]
   // 用传入的第一个参数法来调用调用 myApply 的函数
-  context.fn = this
+  const fn = Symbol()
+  context[fn] = this
   let result
   if (secArg) {
     result = context.fn(...secArg)
@@ -23,7 +24,8 @@ Function.prototype.myBind = function(context) {
   const args = [...arguments].slice(1)
   // 获取 this 指向
   context = context || window
-  const fn = this
+  const fn = Symbol()
+  context[fn] = this
   // 因为 bind 是返回一个函数，函数就可以被 new
   return function Fn() {
     if (this instanceof Fn) {

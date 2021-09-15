@@ -6,7 +6,8 @@ Function.prototype.myApply = function(context) {
   }
   context = context || window
   // 这里用来改变 this 指向，使用 context 来调用 fn，this 也就指向了 context
-  context.fn = this
+  const fn = Symbol()
+  context[fn] = this
   let result
   // 处理参数和 call 有区别
   if (arguments[1]) {
