@@ -264,11 +264,11 @@ const deepCloneObj = {
   }
 }
 
-const deepCloneRes = deepClone(deepCloneObj)
-console.log('deepClone(deepCloneObj) =>', deepCloneRes)
-deepCloneRes.a = 123
-console.log('deepClone(deepCloneObj) =>', deepCloneRes)
-console.log('deepCloneObj =>', deepCloneObj)
+// const deepCloneRes = deepClone(deepCloneObj)
+// console.log('deepClone(deepCloneObj) =>', deepCloneRes)
+// deepCloneRes.a = 123
+// console.log('deepClone(deepCloneObj) =>', deepCloneRes)
+// console.log('deepCloneObj =>', deepCloneObj)
 
 // ------------------------------------------------------------------------------------------------------------------------
 /**
@@ -350,6 +350,72 @@ console.log(r1)
 console.log(r2)
 console.log(r3)
 console.log(r4)
+
+// ------------------------------------------------------------------------------------------------------------------------
+// call
+Function.prototype.myCall = function (context, ...args) {
+  context = context || window
+  const fn = Symbol()
+  context[fn] = this
+  const res = context[fn](...args)
+  delete context[fn]
+  return res
+}
+
+// apply
+Function.prototype.myApply = function (context, args) {
+  context = context || window
+  const fn = Symbol()
+  context[fn] = this
+  const res = context[fn](...args)
+  delete context[fn]
+  return res
+}
+
+const obj = {
+  a:1
+}
+global.a = 1
+function test(q, w, e) {
+  console.log(this.a)
+  console.log(q)
+  console.log(w)
+  console.log(e)
+}
+// test('你好', '2', 3)
+// test.myCall(obj, 'hah', '123', '124213')
+// test.myApply(obj, ['hah', '123', '124213'])
+
+function fn1() {
+  console.log(1)
+}
+function fn2() {
+  console.log(2)
+}
+fn1.myCall.myCall(fn2)
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------------------------------------------------------
 

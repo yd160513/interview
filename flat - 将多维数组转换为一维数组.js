@@ -34,3 +34,39 @@ console.log(flat(arr1))
  console.log(Array.prototype.concat.apply(arr2, arr)) // [ 1, 2, 3, 5, 6, 7 ]
  console.log(arr2.concat(arr)) // [ 1, 2, 3, [ 5, 6, 7 ] ]
  console.log(arr2.concat(1, 2, 3, [5, 6, 7])) // [ 1, 2, 3, 5, 6, 7 ]
+
+// 第二种解决方法 ------------------------------------------------------------------------------------------------------------------------
+console.log(arr.toString().split(',').map(item => Number(item)))
+
+// 第三种解决方法 ------------------------------------------------------------------------------------------------------------------------
+console.log(JSON.stringify(arr).replace(/\[|\]/g, '').split(',').map(item => Number(item)))
+
+// 第四种解决方法 ------------------------------------------------------------------------------------------------------------------------
+// function flat(arr) {
+//   const hasArr = arr.some(item => item instanceof Array)
+//   if (!hasArr) return arr
+//   const res = Array.prototype.concat.apply([], arr)
+//   return flat(res)
+// }
+console.log('flat(arr1) =>', flat(arr1))
+
+// 第五种解决方法 ------------------------------------------------------------------------------------------------------------------------
+Array.prototype.myFlat = function() {
+  const _this = this
+  const result = []
+  let maxDeep = 1 // 最大深度
+  function _flat(arr, loop = 1) {
+    if (loop > maxDeep) maxDeep = loop
+    arr.forEach(item => {
+      if (Array.isArray(item)) {
+        _flat(item, loop + 1)
+      } else {
+        result.push(item)
+      }
+    })
+  }
+  _flat(_this)
+  console.log(`最大深度为: `, maxDeep)
+  return result
+}
+console.log('arr1.myFlat() =>', arr1.myFlat())
