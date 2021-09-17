@@ -24,16 +24,15 @@ Function.prototype.myBind = function(context) {
   const args = [...arguments].slice(1)
   // 获取 this 指向
   context = context || window
-  const fn = Symbol()
-  context[fn] = this
+  const fn = this
   // 因为 bind 是返回一个函数，函数就可以被 new
   return function Fn() {
     if (this instanceof Fn) {
       // 因为函数可以被 new 所以需要拼接 Fn 的参数 arguments
       // 因为 new 的 this 是指向实例的，所以需要忽略调用 bind 时传入的 this
-      return new fn(args, ...arguments)
+      return new fn(...args, ...arguments)
     }
     // 普通的函数通过 apply 来实现
-    return fn.myApply(context, ...args.concat(...arguments))
+    return fn.myApply(context, args.concat(...arguments))
   }
 }
