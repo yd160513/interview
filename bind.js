@@ -17,6 +17,22 @@ Function.prototype.myApply = function (context) {
   return result
 }
 
+/**
+ * 创建一个新对象，使用现有的对象来提供新创建的对象的__proto__。(以第一个参数作为新对象的构造函数的原型对象)
+ * @param {object} prototype 原型对象
+ * @returns 
+ */
+Object.myCreate = function(prototype) {
+  // 定义一个空的构造函数
+  function F() {}
+  // 指定构造函数的原型对象
+  F.prototype = prototype
+  // 通过 new 运算符创建一个空对象
+  const obj = new F()
+  // 返回创建的对象
+  return obj
+}
+
 // new 出来的实例的原型没有指向构造类
 // fn.bind(obj, 1, 2, 3, 4, ...)
 // fn.bind(obj, 1, 2, 3, ...)(123)
@@ -78,7 +94,7 @@ Function.prototype.myBind2 = function (context, ...outerArgs) {
   //        YPoint3.prototype.getName = () => {}
   //        这个时候就会在 thatFunc.prototype 上增加一个 getName 方法
   //        所以为了不污染 thatFunc.prototype 所以使用 Object.create() 创建了一个副本
-  fBound.prototype = Object.create(thatFunc.prototype)
+  fBound.prototype = Object.myCreate(thatFunc.prototype)
   return fBound
 }
 
