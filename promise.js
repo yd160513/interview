@@ -44,39 +44,101 @@
 // })
 
 
-const mincroTask = []
-const macroTask = []
-class Promise {
-  // promise 中的 callback 是同步任务，会立刻执行
-  constructor(executor) {
-    executor(this.resolve)
-  }
-  // resolve 的作用是来触发 then 的执行，
-  // 但是因为 promise.then() 是微任务，所以不能立刻触发，而是将触发的这个步骤放到了微任务中
-  resolve = (_value) => {
-    // 不能立刻触发
-    // this._onSuccess(_value)
-    // 将其放到微任务队列中，等待事件循环来触发
-    mincroTask.push(() => this._onSuccess(_value))
-  }
-  // 成功的 callback
-  then = (onSuccess) => {
-    this._onSuccess = onSuccess
-  }
+// ----------------------------------------------------------------------
+
+
+// const mincroTask = []
+// const macroTask = []
+// class Promise {
+//   // promise 中的 callback 是同步任务，会立刻执行
+//   constructor(executor) {
+//     executor(this.resolve)
+//   }
+//   // resolve 的作用是来触发 then 的执行，
+//   // 但是因为 promise.then() 是微任务，所以不能立刻触发，而是将触发的这个步骤放到了微任务中
+//   resolve = (_value) => {
+//     // 不能立刻触发
+//     // this._onSuccess(_value)
+//     // 将其放到微任务队列中，等待事件循环来触发
+//     mincroTask.push(() => this._onSuccess(_value))
+//   }
+//   // 成功的 callback
+//   then = (onSuccess) => {
+//     this._onSuccess = onSuccess
+//   }
+// }
+
+// setInterval(() => {
+//   const task = macroTask.shift()
+//   task && task()
+//   mincroTask.forEach(item => item())
+//   mincroTask.length = 0
+// }, 0)
+
+// console.log('1')
+// setTimeout(() => {
+//   console.log('2')
+// }, 0)
+// new Promise((resolve) => {
+//   resolve('3')
+// }).then(res => console.log(res))
+// console.log('4')
+
+
+// 前置知识 ----------------------------------------------------------------------
+// 1. 
+function timeout(ms) {
+  return new Promise((resolve, reject) => {
+    setTimeout(resolve, ms, 'done') // 第三个及以后的参数都会作为第一个参数(函数)的参数传入
+  })
 }
 
-setInterval(() => {
-  const task = macroTask.shift()
-  task && task()
-  mincroTask.forEach(item => item())
-  mincroTask.length = 0
-}, 0)
+timeout(100).then(value => {
+  console.log(value)
+})
 
-console.log('1')
-setTimeout(() => {
-  console.log('2')
-}, 0)
-new Promise((resolve) => {
-  resolve('3')
-}).then(res => console.log(res))
-console.log('4')
+// 2. 
+// const p1 = new Promise(function(resolve, reject) {
+//   // ...
+// })
+// const p2 = new Promise(function(resolve, reject) {
+//   // ...
+//   // p1 的状态决定了 p2 的状态。如果 p1 的状态是 pending，则 p2 的回调函数就会等待 p1 的状态改变。
+//   // 如果 p1 的状态已经是 resolved 或者 rejected, 那么 p2 的回调函数将会立即执行。
+//   resolve(p1) // 将 p1 传入。等于: 一个异步操作的结果是返回另一个异步操作
+// })
+
+/**
+ * eg: 
+ * 这里的 p2 中的 setTimeout 会先于 p1 中的 setTimeout 执行，但是由于 p2 中的 resolve 传入的是 p1, 所以 p2 的状态会由 p1 来决定。
+ * 当 p2 开始执行的时候 p1 的状态还是 pending, 所以会等待 p1 的执行，当 p1 执行完毕之后，因为抛出了一个 error，所以 p2 的执行也会进入 catch 中。
+ */
+// const p1 = new Promise((resolve, reject) => {
+//   setTimeout(() => reject(new Error('fail')), 3000)
+// }) 
+
+// const p2 = new Promise((resolve, reject) => {
+//   setTimeout(() => resolve(p1), 1000)
+// })
+
+// p2
+//   .then(result => console.log(result))
+//   .catch(error => console.log(error))
+
+// 3. resolve/rejecet 不会阻止代码的执行，并且其后边的代码会先于其执行。因为立即 resolved 的 Promise 是在本轮事件循环的末尾执行，总是晚于本轮事件循环的同步任务
+new Promise((resolve, reject) => { // 执行结果: 2 1 
+  console.log(2)
+  resolve(1)
+}).then(v => {
+  console.log(v)
+})
+
+/**
+ * 4. then 方法返回得到是一个新的 Promise 实例(注意: 不是原来那个 Promise 实例)。因此可以采用链式写法。 
+ *    采用链式的 then， 可以指定一组按照次序调用的回调函数。这时，前一个回调函数，有可能返回的还是一个 Promise 对象(即异步操作)，
+ *    这时后一个回调函数，就会等待该 Promise 对象的状态发生变化，才会被调用
+ */
+
+
+
+
