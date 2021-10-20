@@ -141,17 +141,60 @@
 
 // 实现 ----------------------------------------------------------------------
 /**
- * 1. Promise 中传入的回调函数立即执行
- * 2. 有三个状态: pending/resolved/rejected, 
- *    改变状态只能调用 resolve 将 pending 改为 resolved, 或者调用 reject 将 pending 改为 rejected
- * 3. 因为 then 在 promise 的实例上调用，所以 then 是定义在原型上的
- * 4. 状态为 resolved 则调用 then 的第一个回调，状态为 rejected 则调用 then 的第二个回调
+ * 实现流程:
+ *  1. 最基本的功能
+ *      1. Promise 中传入的回调函数立即执行
+ *      2. 有三个状态: pending/resolved/rejected, 
+ *         改变状态只能调用 resolve 将 pending 改为 resolved, 或者调用 reject 将 pending 改为 rejected
+ *      3. 因为 then 在 promise 的实例上调用，所以 then 是定义在原型上的
+ *      4. 状态为 resolved 则调用 then 的第一个回调，状态为 rejected 则调用 then 的第二个回调
+ *  2. 增加异步处理逻辑
+ *    eg: 
+ *      const promise = new Promise((resolve, reject) => {
+ *        setTimeout(() => {
+ *          console.log('这是两秒之后的执行结果')
+ *        }, 2000)
+ *      })
+ *      promse.then(value => {
+ *        console.log(value)
+ *      }, reason => {
+ *        console.log(reason)
+ *      })
+ *    现象: 
+ *      如上的 eg 不会答应任何结果: 
+ *        同步代码立即执行， setTimeout 是异步代码。
+ *        then 会立即执行，这个时候 Promise 的状态还是 pending， 不会进行执行任何操作， 
+ *        当异步代码执行完毕之后，同步代码已经在其开始执行的时候就已经执行完毕了。 所以这个时候什么都不会打印
+ *    实现:
+ *      定义缓存，用来存储成功和失败的回调函数。
+ *      在 then 中判断 resolvedCallback/rejectedCallback 如果 state 是 pending 状态的话则将其进行缓存
+ *      在 resolve/reject 中判断如果有缓存则执行缓存。
  */
 function MyPromise(executor) {
+  // 状态
   this.state = 'pending'
+  // 成功之后的值
   this.value = null
+  // 失败的原因
   this.reason = null
+  // 存放异步成功的缓存
+  this.resolvedCache = null
+  // 存放异步失败的缓存
+  this.rejectedCache = null
 
+  /**
+   * 这里采用箭头函数而不采用函数声明的原因: 是因为 this 指向的问题
+   * 函数声明:
+   *  function test () {}
+   * 如果采用函数声明， this 指向是不固定的， 而采用箭头函数 this 是由外层的普通函数来决定的， 这个是在定义的时候就决定了的。 
+   * eg: 
+   *   new Promise((resolve, reject) => {
+   *     resolve('...')
+   *     // 这里调用 reject， 就会导致 reject 函数中的 this 指向 window/global， 而不是 MyPromise。 但是在 reject 函数中需要取到当前函数中的 state， 由于 this 的错误指向也就不会取到正确的值。
+   *     reject('...')
+   *   })
+   */
+  // function reject(_reason) {
   const reject = (_reason) => {
     /**
      * promise 只可以从 pending 改变到 rejected/resolved, 如果已经是 rejected/resolved 则无法更改状态
@@ -162,11 +205,27 @@ function MyPromise(executor) {
      *    })
      */
     if (this.state === 'pending') {
+      // 修改状态
       this.state = 'rejected'
+      // 保存失败原因
       this.reason = _reason
+      // 执行异步回调
+      this.rejectedCache && this.rejectedCache(this.value)
     }
   }
-
+  /**
+   * 这里采用箭头函数而不采用函数声明的原因: 是因为 this 指向的问题
+   * 函数声明:
+   *  function test () {}
+   * 如果采用函数声明， this 指向是不固定的， 而采用箭头函数 this 是由外层的普通函数来决定的， 这个是在定义的时候就决定了的。 
+   * eg: 
+   *   new Promise((resolve, reject) => {
+   *     // 这里调用 resolve 就会导致 resolve 函数中的 this 指向 window/global， 而不是 MyPromise。 但是在 resolve 函数中需要取到当前函数中的 state， 由于 this 的错误指向也就不会取到正确的值。
+   *     resolve('...')
+   *     reject('...')
+   *   })
+   */
+  // function resolve(_value) {
   const resolve = (_value) => {
     /**
      * promise 只可以从 pending 改变到 rejected/resolved, 如果已经是 rejected/resolved 则无法更改状态
@@ -177,30 +236,58 @@ function MyPromise(executor) {
      *    })
      */
     if (this.state === 'pending') {
+      // 保存状态
       this.state = 'resolved'
+      // 保存成功后的值
       this.value = _value
+      // 执行异步回调
+      this.resolvedCache && this.resolvedCache(this.value)
     }
   }
 
+  // 指向传入的函数， 对应到 promise 中就是立刻执行 Promise 的回调函数。
   executor(resolve, reject)
 }
 
 MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
+  // 成功时触发成功的回调
   if (this.state === 'resolved') {
     resolvedCallback(this.value)
   }
+  // 失败时触发失败的回调
   if (this.state === 'rejected') {
     rejectedCallback(this.reason)
+  }
+  // 状态仍然为 pending 时， promise 中有异步函数
+  if (this.state === 'pending') {
+    // 将成功的回调缓存起来， 等获取到成功的结果(resolve 函数中)的时候再执行
+    this.resolvedCache = resolvedCallback
+    // 将失败的回调缓存起来， 等获取到失败的结果(reject 函数中)的时候再执行
+    this.rejectedCache = rejectedCallback
   }
 }
 
 
 
 // 使用 ----------------------------------------------------------------------
+// 1. 基本功能
+// const promise = new MyPromise((resolve, reject) => {
+//   // const promise = new Promise((resolve, reject) => {
+//   resolve('resolved')
+//   reject('rejected')
+// })
+
+// 2. 增加异步
 const promise = new MyPromise((resolve, reject) => {
-  // const promise = new Promise((resolve, reject) => {
-  resolve('resolved')
-  reject('rejected')
+  setTimeout(() => {
+    /**
+     * 这个时候不会打印任何结果: 
+     * 同步代码立即执行， setTimeout 是异步代码。
+     * then 会立即执行，这个时候 Promise 的状态还是 pending， 不会进行执行任何操作， 
+     * 当异步代码执行完毕之后，同步代码已经在其开始执行的时候就已经执行完毕了。 所以这个时候什么都不会打印
+     */
+    resolve('这是两秒之后的执行结果')
+  }, 2000)
 })
 
 promise.then(value => {
@@ -208,3 +295,8 @@ promise.then(value => {
 }, reason => {
   console.log(`rejected => ${reason}`)
 })
+
+
+
+
+
