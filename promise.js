@@ -87,15 +87,15 @@
 
 // 前置知识 ----------------------------------------------------------------------
 // 1. 
-function timeout(ms) {
-  return new Promise((resolve, reject) => {
-    setTimeout(resolve, ms, 'done') // 第三个及以后的参数都会作为第一个参数(函数)的参数传入
-  })
-}
+// function timeout(ms) {
+//   return new Promise((resolve, reject) => {
+//     setTimeout(resolve, ms, 'done') // 第三个及以后的参数都会作为第一个参数(函数)的参数传入
+//   })
+// }
 
-timeout(100).then(value => {
-  console.log(value)
-})
+// timeout(100).then(value => {
+//   console.log(value)
+// })
 
 // 2. 
 // const p1 = new Promise(function(resolve, reject) {
@@ -126,12 +126,12 @@ timeout(100).then(value => {
 //   .catch(error => console.log(error))
 
 // 3. resolve/rejecet 不会阻止代码的执行，并且其后边的代码会先于其执行。因为立即 resolved 的 Promise 是在本轮事件循环的末尾执行，总是晚于本轮事件循环的同步任务
-new Promise((resolve, reject) => { // 执行结果: 2 1 
-  console.log(2)
-  resolve(1)
-}).then(v => {
-  console.log(v)
-})
+// new Promise((resolve, reject) => { // 执行结果: 2 1 
+//   console.log(2)
+//   resolve(1)
+// }).then(v => {
+//   console.log(v)
+// })
 
 /**
  * 4. then 方法返回得到是一个新的 Promise 实例(注意: 不是原来那个 Promise 实例)。因此可以采用链式写法。 
@@ -153,15 +153,35 @@ function MyPromise(executor) {
   this.reason = null
 
   const reject = (_reason) => {
-    this.state = 'rejected'
-    this.reason = _reason
+    /**
+     * promise 只可以从 pending 改变到 rejected/resolved, 如果已经是 rejected/resolved 则无法更改状态
+     * eg: 其中一种情况
+     *    new Promise((resolve, reject) => {
+     *      resolve('...') // 这里先调用 resolve， 下边又调用了 reject， 这个时候如果没有 if (this.state === 'pending') { } 的判断，则还会改变 state， 这个时候就违背了 promise 的原则。
+     *      reject('...')
+     *    })
+     */
+    if (this.state === 'pending') {
+      this.state = 'rejected'
+      this.reason = _reason
+    }
   }
 
   const resolve = (_value) => {
-    this.state = 'resolved'
-    this.value = _value
+    /**
+     * promise 只可以从 pending 改变到 rejected/resolved, 如果已经是 rejected/resolved 则无法更改状态
+     * eg: 其中一种情况
+     *    new Promise((resolve, reject) => {
+     *      resolve('...') // 这里先调用 resolve， 下边又调用了 reject， 这个时候如果没有 if (this.state === 'pending') { } 的判断，则还会改变 state， 这个时候就违背了 promise 的原则。
+     *      reject('...')
+     *    })
+     */
+    if (this.state === 'pending') {
+      this.state = 'resolved'
+      this.value = _value
+    }
   }
-  
+
   executor(resolve, reject)
 }
 
