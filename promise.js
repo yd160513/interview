@@ -136,9 +136,55 @@ new Promise((resolve, reject) => { // 执行结果: 2 1
 /**
  * 4. then 方法返回得到是一个新的 Promise 实例(注意: 不是原来那个 Promise 实例)。因此可以采用链式写法。 
  *    采用链式的 then， 可以指定一组按照次序调用的回调函数。这时，前一个回调函数，有可能返回的还是一个 Promise 对象(即异步操作)，
- *    这时后一个回调函数，就会等待该 Promise 对象的状态发生变化，才会被调用
+ *    这时，后一个回调函数，就会等待该 Promise 对象的状态发生变化，才会被调用
  */
 
+// 实现 ----------------------------------------------------------------------
+/**
+ * 1. Promise 中传入的回调函数立即执行
+ * 2. 有三个状态: pending/resolved/rejected, 
+ *    改变状态只能调用 resolve 将 pending 改为 resolved, 或者调用 reject 将 pending 改为 rejected
+ * 3. 因为 then 在 promise 的实例上调用，所以 then 是定义在原型上的
+ * 4. 状态为 resolved 则调用 then 的第一个回调，状态为 rejected 则调用 then 的第二个回调
+ */
+function MyPromise(executor) {
+  this.state = 'pending'
+  this.value = null
+  this.reason = null
+
+  const reject = (_reason) => {
+    this.state = 'rejected'
+    this.reason = _reason
+  }
+
+  const resolve = (_value) => {
+    this.state = 'resolved'
+    this.value = _value
+  }
+  
+  executor(resolve, reject)
+}
+
+MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
+  if (this.state === 'resolved') {
+    resolvedCallback(this.value)
+  }
+  if (this.state === 'rejected') {
+    rejectedCallback(this.reason)
+  }
+}
 
 
 
+// 使用 ----------------------------------------------------------------------
+const promise = new MyPromise((resolve, reject) => {
+  // const promise = new Promise((resolve, reject) => {
+  resolve('resolved')
+  reject('rejected')
+})
+
+promise.then(value => {
+  console.log(`resolved => ${value}`)
+}, reason => {
+  console.log(`rejected => ${reason}`)
+})
