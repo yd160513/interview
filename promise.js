@@ -169,6 +169,31 @@
  *      定义缓存，用来存储成功和失败的回调函数。
  *      在 then 中判断 resolvedCallback/rejectedCallback 如果 state 是 pending 状态的话则将其进行缓存
  *      在 resolve/reject 中判断如果有缓存则执行缓存。
+ *  3. then 方法多次调用
+ *    eg: 
+ *      const promise = new MyPromise((resolve, reject) => {
+ *        setTimeout(() => {
+ *          resolve('这是两秒之后的执行结果')
+ *        }, 2000)
+ *      })
+ *      promise.then(value => {
+ *        console.log(1)
+ *        console.log(`resolve => ${value}`)
+ *      })
+ *      promise.then(value => {
+ *        console.log(2)
+ *        console.log(`resolve => ${value}`)
+ *      })
+ *      promise.then(value => {
+ *        console.log(3)
+ *        console.log(`resolve => ${value}`)
+ *      })
+ *    现象: 
+ *      只会打印: 3 \n resolve => 这是两秒之后的执行结果
+ *      正常应该是 1 2 3 都会答应出来
+ *    实现:
+ *      跟踪代码可以发现，问题是出在 then 方法中对缓存的赋值上。多次调用 then 方法，后一次都会将前一次的缓存覆盖掉，所以最终只会打印出最后一次调用的结果。
+ *      可将 resolvedCache 和 rejectedCache 分别改为数组，每次有回调需要缓存的时候向数组中 push，在执行的时候遍历数组从头分别执行
  */
 function MyPromise(executor) {
   // 状态
@@ -178,9 +203,9 @@ function MyPromise(executor) {
   // 失败的原因
   this.reason = null
   // 存放异步成功的缓存
-  this.resolvedCache = null
+  this.resolvedCache = []
   // 存放异步失败的缓存
-  this.rejectedCache = null
+  this.rejectedCache = []
 
   /**
    * 这里采用箭头函数而不采用函数声明的原因: 是因为 this 指向的问题
@@ -209,8 +234,11 @@ function MyPromise(executor) {
       this.state = 'rejected'
       // 保存失败原因
       this.reason = _reason
-      // 执行异步回调
-      this.rejectedCache && this.rejectedCache(this.value)
+      // 循环执行异步回调。 循环调用的原因见上边实现流程中 3。
+      while (this.rejectedCache.length) {
+        // shift() 删除数组中的第一个元素并返回。这不是一个纯函数，会改变原数组。
+        this.rejectedCache.shift()(this.reason)
+      }
     }
   }
   /**
@@ -240,8 +268,11 @@ function MyPromise(executor) {
       this.state = 'resolved'
       // 保存成功后的值
       this.value = _value
-      // 执行异步回调
-      this.resolvedCache && this.resolvedCache(this.value)
+      // 循环执行异步回调。 循环调用的原因见上边实现流程中 3。
+      while (this.resolvedCache.length) {
+        // shift() 删除数组中的第一个元素并返回。这不是一个纯函数，会改变原数组。ƒ
+        this.resolvedCache.shift()(this.value)
+      }
     }
   }
 
@@ -261,9 +292,9 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
   // 状态仍然为 pending 时， promise 中有异步函数
   if (this.state === 'pending') {
     // 将成功的回调缓存起来， 等获取到成功的结果(resolve 函数中)的时候再执行
-    this.resolvedCache = resolvedCallback
+    this.resolvedCache.push(resolvedCallback)
     // 将失败的回调缓存起来， 等获取到失败的结果(reject 函数中)的时候再执行
-    this.rejectedCache = rejectedCallback
+    this.rejectedCache.push(rejectedCallback)
   }
 }
 
@@ -277,23 +308,51 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
 //   reject('rejected')
 // })
 
+// promise.then(value => {
+//   console.log(`resolved => ${value}`)
+// }, reason => {
+//   console.log(`rejected => ${reason}`)
+// })
+
 // 2. 增加异步
+// const promise = new MyPromise((resolve, reject) => {
+//   setTimeout(() => {
+//     /**
+//      * 这个时候不会打印任何结果: 
+//      * 同步代码立即执行， setTimeout 是异步代码。
+//      * then 会立即执行，这个时候 Promise 的状态还是 pending， 不会进行执行任何操作， 
+//      * 当异步代码执行完毕之后，同步代码已经在其开始执行的时候就已经执行完毕了。 所以这个时候什么都不会打印
+//      */
+//     resolve('这是两秒之后的执行结果')
+//   }, 2000)
+// })
+
+// promise.then(value => {
+//   console.log(`resolved => ${value}`)
+// }, reason => {
+//   console.log(`rejected => ${reason}`)
+// })
+
+// 3. then 方法多次调用
 const promise = new MyPromise((resolve, reject) => {
   setTimeout(() => {
-    /**
-     * 这个时候不会打印任何结果: 
-     * 同步代码立即执行， setTimeout 是异步代码。
-     * then 会立即执行，这个时候 Promise 的状态还是 pending， 不会进行执行任何操作， 
-     * 当异步代码执行完毕之后，同步代码已经在其开始执行的时候就已经执行完毕了。 所以这个时候什么都不会打印
-     */
     resolve('这是两秒之后的执行结果')
   }, 2000)
 })
 
 promise.then(value => {
-  console.log(`resolved => ${value}`)
-}, reason => {
-  console.log(`rejected => ${reason}`)
+  console.log(1)
+  console.log(`resolve => ${value}`)
+})
+
+promise.then(value => {
+  console.log(2)
+  console.log(`resolve => ${value}`)
+})
+
+promise.then(value => {
+  console.log(3)
+  console.log(`resolve => ${value}`)
 })
 
 
