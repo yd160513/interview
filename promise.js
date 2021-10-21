@@ -194,6 +194,10 @@
  *    实现:
  *      跟踪代码可以发现，问题是出在 then 方法中对缓存的赋值上。多次调用 then 方法，后一次都会将前一次的缓存覆盖掉，所以最终只会打印出最后一次调用的结果。
  *      可将 resolvedCache 和 rejectedCache 分别改为数组，每次有回调需要缓存的时候向数组中 push，在执行的时候遍历数组从头分别执行
+ *  4. then 方法的链式调用
+ *      then 方法要链式调用那么久需要返回一个 Promise 对象， then 方法里面 return 一个返回值作为下一个 then 方法的参数， 如果是 return 一个 Promise 对象，那么就需要判断它的状态
+ *    eg: 
+ *      
  */
 function MyPromise(executor) {
   // 状态
@@ -281,21 +285,29 @@ function MyPromise(executor) {
 }
 
 MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
-  // 成功时触发成功的回调
-  if (this.state === 'resolved') {
-    resolvedCallback(this.value)
-  }
-  // 失败时触发失败的回调
-  if (this.state === 'rejected') {
-    rejectedCallback(this.reason)
-  }
-  // 状态仍然为 pending 时， promise 中有异步函数
-  if (this.state === 'pending') {
-    // 将成功的回调缓存起来， 等获取到成功的结果(resolve 函数中)的时候再执行
-    this.resolvedCache.push(resolvedCallback)
-    // 将失败的回调缓存起来， 等获取到失败的结果(reject 函数中)的时候再执行
-    this.rejectedCache.push(rejectedCallback)
-  }
+  const promise2 = new MyPromise((resolve, reject) => {
+    // 成功时触发成功的回调
+    if (this.state === 'resolved') {
+      const result = resolvedCallback(this.value)
+      if (result instanceof MyPromise) {
+        result.then(resolve, reject)
+      } else {
+        resolve(result)
+      }
+    }
+    // 失败时触发失败的回调
+    if (this.state === 'rejected') {
+      rejectedCallback(this.reason)
+    }
+    // 状态仍然为 pending 时， promise 中有异步函数
+    if (this.state === 'pending') {
+      // 将成功的回调缓存起来， 等获取到成功的结果(resolve 函数中)的时候再执行
+      this.resolvedCache.push(resolvedCallback)
+      // 将失败的回调缓存起来， 等获取到失败的结果(reject 函数中)的时候再执行
+      this.rejectedCache.push(rejectedCallback)
+    }
+  })
+  return promise2
 }
 
 
@@ -334,28 +346,44 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
 // })
 
 // 3. then 方法多次调用
-const promise = new MyPromise((resolve, reject) => {
-  setTimeout(() => {
-    resolve('这是两秒之后的执行结果')
-  }, 2000)
-})
+// const promise = new MyPromise((resolve, reject) => {
+//   setTimeout(() => {
+//     resolve('这是两秒之后的执行结果')
+//   }, 2000)
+// })
 
+// promise.then(value => {
+//   console.log(1)
+//   console.log(`resolve => ${value}`)
+// })
+
+// promise.then(value => {
+//   console.log(2)
+//   console.log(`resolve => ${value}`)
+// })
+
+// promise.then(value => {
+//   console.log(3)
+//   console.log(`resolve => ${value}`)
+// })
+
+// 4. then 方法的链式调用
+const promise = new MyPromise((resolve, reject) => {
+  resolve('success')
+})
+function other() {
+  return new MyPromise((resolve, reject) => {
+    resolve('other')
+  })
+}
 promise.then(value => {
   console.log(1)
   console.log(`resolve => ${value}`)
-})
-
-promise.then(value => {
+  return other()
+}).then(value => {
   console.log(2)
   console.log(`resolve => ${value}`)
 })
-
-promise.then(value => {
-  console.log(3)
-  console.log(`resolve => ${value}`)
-})
-
-
 
 
 
