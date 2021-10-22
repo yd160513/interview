@@ -218,7 +218,17 @@
  *        console.log(3)
  *        console.log(`resolve => ${value}`)
  *      })
- *      
+ *  5. then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。如果是自己的话会报错。
+ *    eg:
+ *      const promise = new Promise((resolve, reject) => {
+ *        resolve(100)
+ *      })
+ *      const p1 = promise.then(value => {
+ *        console.log(value)
+ *        return p1
+ *      })
+ *    实现:
+ *      在 then 中判断一下 resolve callback 的返回值是否等于自身
  */
 function MyPromise(executor) {
   // 状态
@@ -310,10 +320,17 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
   const promise2 = new MyPromise((resolve, reject) => {
     // 成功时触发成功的回调
     if (this.state === 'resolved') {
-      // 接收成功回调(第一个参数)的返回值
-      const successRes = resolvedCallback(this.value)
-      // 对 resolve 的返回结果进行处理
-      resolvePromise(successRes, resolve, reject)
+      queueMicrotask(() => {
+        // 接收成功回调(第一个参数)的返回值
+        const successRes = resolvedCallback(this.value)
+        /**
+         * 1. 对 resolve 的返回结果进行处理
+         * 2. 将 promise2 传入是为了解决实现步骤 5 中的问题: then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+         *    promise2 是 new MyPromise 的实例，但是咱们又要在 new MyPromise 中使用这个实例，这个时候会抛出错误: 
+         *      Cannot access 'p1' before initialization
+         */
+        resolvePromise(promise2, successRes, resolve, reject)
+      })
     }
     // 失败时触发失败的回调
     if (this.state === 'rejected') {
@@ -330,8 +347,15 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
   return promise2
 }
 
-// 对 resolve 的返回结果进行处理
-function resolvePromise(value, resolve, reject) {
+/**
+ * 对 resolve 的返回结果进行处理
+ * 传入 promise 是为了解决实现步骤 5 中的问题:  then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+ */
+function resolvePromise(promise, value, resolve, reject) {
+  // 如果相等了则说明 callback 中 return 的是自身。
+  if (promise === value) {
+    return reject(new TypeError('Chaining cycle detected for promise #<Promise>'))
+  }
   // 返回值如果也是 Promise 则调用其 then 方法，等待得到 Promise 的结果
   if (value instanceof MyPromise) {
     // 等待 Promise 的结果，交给 .then 来处理。（递归调用 then 方法）
@@ -402,36 +426,54 @@ function resolvePromise(value, resolve, reject) {
 // })
 
 // 4. then 方法的链式调用
+// const promise = new MyPromise((resolve, reject) => {
+//   resolve('success')
+// })
+// function other() {
+//   return new MyPromise((resolve, reject) => {
+//     resolve('other')
+//   })
+// }
+// promise.then(value => {
+//   console.log(1)
+//   console.log(`resolve => ${value}`)
+//   /**
+//    * 在 other 方法中 return 了一个 promise，在 then 方法的实现中就需要注意: 必须等待这个 promise 有了结果，才能继续向下执行。
+//    * 问题:
+//    *  1. promise 中如果没有执行 resolve 是怎么阻断执行(没有执行 then 方法的 callback)的？
+//    *     从源码中可以看到，其实是进入到了 then 方法中的，但是 then 方法中关于执行第一个参数(callback)的代码都是基于 promise 状态为 resolved 的。
+//    *     而状态变为 resolved 又是通过调用 resolve 方法来改变的。
+//    *     所以不调用 resolve 方法就不会执行 then 中的 callback。
+//    *  1. 在 then 的 callback 中， 用户 return 了一个值，是怎么包装成 resolve 被返回的
+//    *     在源码中，会先会去到 callback 的返回值，如果是一个普通的值，会直接被当做 resolve 方法的参数传入，这样也便于链式调用，作为下一个 then 的参数被传入。
+//    */
+//   return other()
+// }).then(value => {
+//   console.log(2)
+//   console.log(`resolve => ${value}`)
+//   return 123
+// }).then(value => {
+//   console.log(3)
+//   console.log(`resolve => ${value}`)
+// })
+
+// 5. then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+//    如果是自己的话会报错
 const promise = new MyPromise((resolve, reject) => {
-  resolve('success')
+// const promise = new Promise((resolve, reject) => {
+  resolve(`success`)
 })
-function other() {
-  return new MyPromise((resolve, reject) => {
-    resolve('other')
-  })
-}
-promise.then(value => {
+const p1 = promise.then(value => {
   console.log(1)
   console.log(`resolve => ${value}`)
-  /**
-   * 在 other 方法中 return 了一个 promise，在 then 方法的实现中就需要注意: 必须等待这个 promise 有了结果，才能继续向下执行。
-   * 问题:
-   *  1. promise 中如果没有执行 resolve 是怎么阻断执行(没有执行 then 方法的 callback)的？
-   *     从源码中可以看到，其实是进入到了 then 方法中的，但是 then 方法中关于执行第一个参数(callback)的代码都是基于 promise 状态为 resolved 的。
-   *     而状态变为 resolved 又是通过调用 resolve 方法来改变的。
-   *     所以不调用 resolve 方法就不会执行 then 中的 callback。
-   *  1. 在 then 的 callback 中， 用户 return 了一个值，是怎么包装成 resolve 被返回的
-   *     在源码中，会先会去到 callback 的返回值，如果是一个普通的值，会直接被当做 resolve 方法的参数传入，这样也便于链式调用，作为下一个 then 的参数被传入。
-   */
-  return other()
-}).then(value => {
+  return p1 // TypeError: Chaining cycle detected for promise #<Promise>
+})
+p1.then(value => {
   console.log(2)
   console.log(`resolve => ${value}`)
-  return 123
-}).then(value => {
+}, reason => {
   console.log(3)
-  console.log(`resolve => ${value}`)
+  console.log(reason.message)
 })
-
 
 
