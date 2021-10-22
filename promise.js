@@ -218,7 +218,7 @@
  *        console.log(3)
  *        console.log(`resolve => ${value}`)
  *      })
- *  5. then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。如果是自己的话会报错。
+ *  5. then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。 如果是自己的话会报错。
  *    eg:
  *      const promise = new Promise((resolve, reject) => {
  *        resolve(100)
@@ -229,6 +229,12 @@
  *      })
  *    实现:
  *      在 then 中判断一下 resolve callback 的返回值是否等于自身
+ *  6. 执行器中错误捕获
+ *  7. 参考 resolved 状态的处理方式，对 pending 和 rejected 状态进行改造
+ *    1. 增加异步状态下的链式调用
+ *    2. 增加回调函数执行结果的判断
+ *    3. 增加 then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+ *    4. 增加错误捕获
  */
 function MyPromise(executor) {
   // 状态
@@ -311,8 +317,14 @@ function MyPromise(executor) {
     }
   }
 
-  // 指向传入的函数， 对应到 promise 中就是立刻执行 Promise 的回调函数。
-  executor(resolve, reject)
+  // 捕获执行器的异常
+  try {
+    // 指向传入的函数， 对应到 promise 中就是立刻执行 Promise 的回调函数。
+    executor(resolve, reject)
+  } catch (error) {
+    // 有错误直接执行 reject
+    reject(error)
+  }
 }
 
 MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
@@ -320,28 +332,84 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
   const promise2 = new MyPromise((resolve, reject) => {
     // 成功时触发成功的回调
     if (this.state === 'resolved') {
+      // 创建一个微任务等待 promise2 完成初始化
       queueMicrotask(() => {
-        // 接收成功回调(第一个参数)的返回值
-        const successRes = resolvedCallback(this.value)
-        /**
-         * 1. 对 resolve 的返回结果进行处理
-         * 2. 将 promise2 传入是为了解决实现步骤 5 中的问题: then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
-         *    promise2 是 new MyPromise 的实例，但是咱们又要在 new MyPromise 中使用这个实例，这个时候会抛出错误: 
-         *      Cannot access 'p1' before initialization
-         */
-        resolvePromise(promise2, successRes, resolve, reject)
+        try {
+          // 接收成功回调(第一个参数)的返回值
+          const successRes = resolvedCallback(this.value)
+          /**
+           * 1. 对 resolve 的返回结果进行处理
+           * 2. 将 promise2 传入是为了解决实现步骤 5 中的问题: then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+           *    promise2 是 new MyPromise 的实例，但是咱们又要在 new MyPromise 中使用这个实例，这个时候会抛出错误: 
+           *      Cannot access 'p1' before initialization
+           *    因为上边这个错误，所以需要创建一个微任务，在微任务中进行处理
+           */
+          resolvePromise(promise2, successRes, resolve, reject)
+        } catch (error) {
+          reject(error)
+        }
       })
     }
     // 失败时触发失败的回调
     if (this.state === 'rejected') {
-      rejectedCallback(this.reason)
+      // 创建一个微任务等待 promise2 完成初始化
+      queueMicrotask(() => {
+        try {
+          // 接收失败回调(第二个参数)的返回值
+          const rejectRes = rejectedCallback(this.reason)
+          /**
+           * 1. 对 reject 的返回结果进行处理
+           * 2. 将 promise2 传入是为了解决实现步骤 5 中的问题: then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+           *    promise2 是 new MyPromise 的实例，但是咱们又要在 new MyPromise 中使用这个实例，这个时候会抛出错误: 
+           *      Cannot access 'p1' before initialization
+           *    因为上边这个错误，所以需要创建一个微任务，在微任务中进行处理
+           */
+          resolvePromise(promise2, rejectRes, resolve, reject)
+        } catch (error) {
+          reject(error)
+        }
+      })
     }
     // 状态仍然为 pending 时， promise 中有异步函数
     if (this.state === 'pending') {
       // 将成功的回调缓存起来， 等获取到成功的结果(resolve 函数中)的时候再执行
-      this.resolvedCache.push(resolvedCallback)
+      this.resolvedCache.push(() => {
+        queueMicrotask(() => {
+          try {
+            // 接收成功回调(第一个参数)的返回值
+            const res = resolvedCallback(this.value)
+            /**
+             * 1. 对 resolve 的返回结果进行处理
+             * 2. 将 promise2 传入是为了解决实现步骤 5 中的问题: then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+             *    promise2 是 new MyPromise 的实例，但是咱们又要在 new MyPromise 中使用这个实例，这个时候会抛出错误: 
+             *      Cannot access 'p1' before initialization
+             *    因为上边这个错误，所以需要创建一个微任务，在微任务中进行处理
+             */
+            resolvePromise(promise2, res, resolve, reject)
+          } catch (error) {
+            reject(error)
+          }
+        })
+      })
       // 将失败的回调缓存起来， 等获取到失败的结果(reject 函数中)的时候再执行
-      this.rejectedCache.push(rejectedCallback)
+      this.rejectedCache.push(() => {
+        queueMicrotask(() => {
+          try {
+            // 接收成功回调(第一个参数)的返回值
+            const res = rejectedCallback(this.reason)
+            /**
+             * 1. 对 resolve 的返回结果进行处理
+             * 2. 将 promise2 传入是为了解决实现步骤 5 中的问题: then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+             *    promise2 是 new MyPromise 的实例，但是咱们又要在 new MyPromise 中使用这个实例，这个时候会抛出错误: 
+             *      Cannot access 'p1' before initialization
+             *    因为上边这个错误，所以需要创建一个微任务，在微任务中进行处理
+             */
+            resolvePromise(promise2, res, resolve, reject)
+          } catch (error) {
+            reject(error)
+          }
+        })
+      })
     }
   })
   return promise2
@@ -459,21 +527,39 @@ function resolvePromise(promise, value, resolve, reject) {
 
 // 5. then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
 //    如果是自己的话会报错
+// const promise = new MyPromise((resolve, reject) => {
+//   // const promise = new Promise((resolve, reject) => {
+//   resolve(`success`)
+// })
+// const p1 = promise.then(value => {
+//   console.log(1)
+//   console.log(`resolve => ${value}`)
+//   return p1 // TypeError: Chaining cycle detected for promise #<Promise>
+// })
+// p1.then(value => {
+//   console.log(2)
+//   console.log(`resolve => ${value}`)
+// }, reason => {
+//   console.log(3)
+//   console.log(reason.message)
+// })
+
+// 6. 捕获执行器错误
 const promise = new MyPromise((resolve, reject) => {
-// const promise = new Promise((resolve, reject) => {
-  resolve(`success`)
+  resolve('success')
 })
-const p1 = promise.then(value => {
+promise.then(value => {
   console.log(1)
-  console.log(`resolve => ${value}`)
-  return p1 // TypeError: Chaining cycle detected for promise #<Promise>
-})
-p1.then(value => {
-  console.log(2)
-  console.log(`resolve => ${value}`)
+  console.log(value)
+  throw new Error('error info')
 }, reason => {
+  console.log(2)
+  console.log(reason)
+}).then(value => {
   console.log(3)
+  console.log(value)
+}, reason => {
+  console.log(4)
   console.log(reason.message)
 })
-
 
