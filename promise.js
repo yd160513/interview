@@ -195,8 +195,29 @@
  *      跟踪代码可以发现，问题是出在 then 方法中对缓存的赋值上。多次调用 then 方法，后一次都会将前一次的缓存覆盖掉，所以最终只会打印出最后一次调用的结果。
  *      可将 resolvedCache 和 rejectedCache 分别改为数组，每次有回调需要缓存的时候向数组中 push，在执行的时候遍历数组从头分别执行
  *  4. then 方法的链式调用
- *      then 方法要链式调用那么久需要返回一个 Promise 对象， then 方法里面 return 一个返回值作为下一个 then 方法的参数， 如果是 return 一个 Promise 对象，那么就需要判断它的状态
+ *      then 方法要链式调用那么就需要返回一个 Promise 对象，
+ *      在使用 then 方法的时候，里面 return 一个返回值作为下一个 then 方法的参数。 实现 then 方法的时候需要判断: 如果是 return 一个 Promise 对象，那么就需要判断它的状态(调用 then 方法，交给 then 去处理)
  *    eg: 
+ *      const promise = new MyPromise((resolve, reject) => {
+ *        resolve('success')
+ *      })
+ *      function other() {
+ *        return new MyPromise((resolve, reject) => {
+ *          resolve('other')
+ *        })
+ *      }
+ *      promise.then(value => {
+ *        console.log(1)
+ *        console.log(`resolve => ${value}`)
+ *        return other()
+ *      }).then(value => {
+ *        console.log(2)
+ *        console.log(`resolve => ${value}`)
+ *        return 123
+ *      }).then(value => {
+ *        console.log(3)
+ *        console.log(`resolve => ${value}`)
+ *      })
  *      
  */
 function MyPromise(executor) {
@@ -285,15 +306,14 @@ function MyPromise(executor) {
 }
 
 MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
+  // 为了链式调用，这里直接创建一个 Promise 实例，并将实例 return 出去。
   const promise2 = new MyPromise((resolve, reject) => {
     // 成功时触发成功的回调
     if (this.state === 'resolved') {
-      const result = resolvedCallback(this.value)
-      if (result instanceof MyPromise) {
-        result.then(resolve, reject)
-      } else {
-        resolve(result)
-      }
+      // 接收成功回调(第一个参数)的返回值
+      const successRes = resolvedCallback(this.value)
+      // 对 resolve 的返回结果进行处理
+      resolvePromise(successRes, resolve, reject)
     }
     // 失败时触发失败的回调
     if (this.state === 'rejected') {
@@ -308,6 +328,20 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
     }
   })
   return promise2
+}
+
+// 对 resolve 的返回结果进行处理
+function resolvePromise(value, resolve, reject) {
+  // 返回值如果也是 Promise 则调用其 then 方法，等待得到 Promise 的结果
+  if (value instanceof MyPromise) {
+    // 等待 Promise 的结果，交给 .then 来处理。（递归调用 then 方法）
+    value.then(resolve, reject)
+  }
+  // 返回值是普通值
+  else {
+    // 将结果直接返回
+    resolve(value)
+  }
 }
 
 
@@ -379,9 +413,23 @@ function other() {
 promise.then(value => {
   console.log(1)
   console.log(`resolve => ${value}`)
+  /**
+   * 在 other 方法中 return 了一个 promise，在 then 方法的实现中就需要注意: 必须等待这个 promise 有了结果，才能继续向下执行。
+   * 问题:
+   *  1. promise 中如果没有执行 resolve 是怎么阻断执行(没有执行 then 方法的 callback)的？
+   *     从源码中可以看到，其实是进入到了 then 方法中的，但是 then 方法中关于执行第一个参数(callback)的代码都是基于 promise 状态为 resolved 的。
+   *     而状态变为 resolved 又是通过调用 resolve 方法来改变的。
+   *     所以不调用 resolve 方法就不会执行 then 中的 callback。
+   *  1. 在 then 的 callback 中， 用户 return 了一个值，是怎么包装成 resolve 被返回的
+   *     在源码中，会先会去到 callback 的返回值，如果是一个普通的值，会直接被当做 resolve 方法的参数传入，这样也便于链式调用，作为下一个 then 的参数被传入。
+   */
   return other()
 }).then(value => {
   console.log(2)
+  console.log(`resolve => ${value}`)
+  return 123
+}).then(value => {
+  console.log(3)
   console.log(`resolve => ${value}`)
 })
 
