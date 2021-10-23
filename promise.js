@@ -235,6 +235,7 @@
  *    2. 增加回调函数执行结果的判断
  *    3. 增加 then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
  *    4. 增加错误捕获
+ *  8. 将 then 的 callback 改为可选参数
  */
 function MyPromise(executor) {
   // 状态
@@ -328,6 +329,10 @@ function MyPromise(executor) {
 }
 
 MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
+  // 将 resolvedCallback 和 rejectedCallback 改为可选参数
+  resolvedCallback = typeof resolvedCallback === 'function' ? resolvedCallback : value => value
+  rejectedCallback = typeof rejectedCallback === 'function' ? rejectedCallback : () => { throw this.reason }
+
   // 为了链式调用，这里直接创建一个 Promise 实例，并将实例 return 出去。
   const promise2 = new MyPromise((resolve, reject) => {
     // 成功时触发成功的回调
@@ -545,21 +550,29 @@ function resolvePromise(promise, value, resolve, reject) {
 // })
 
 // 6. 捕获执行器错误
+// const promise = new MyPromise((resolve, reject) => {
+//   resolve('success')
+// })
+// promise.then(value => {
+//   console.log(1)
+//   console.log(value)
+//   throw new Error('error info')
+// }, reason => {
+//   console.log(2)
+//   console.log(reason)
+// }).then(value => {
+//   console.log(3)
+//   console.log(value)
+// }, reason => {
+//   console.log(4)
+//   console.log(reason.message)
+// })
+
+// 7. 将 then 的 callback 改为可选参数
 const promise = new MyPromise((resolve, reject) => {
-  resolve('success')
+  // resolve('success')
+  reject('reject')
 })
-promise.then(value => {
-  console.log(1)
-  console.log(value)
-  throw new Error('error info')
-}, reason => {
-  console.log(2)
-  console.log(reason)
-}).then(value => {
-  console.log(3)
-  console.log(value)
-}, reason => {
-  console.log(4)
-  console.log(reason.message)
-})
+promise.then().then().then().then(value => console.log(value), reason => console.log(reason))
+
 
