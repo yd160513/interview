@@ -236,6 +236,11 @@
  *    3. 增加 then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
  *    4. 增加错误捕获
  *  8. 将 then 的 callback 改为可选参数
+ *  9. 实现 resolve 和 reject 的静态方法
+ *    TIP:
+ *      1. public 是定义在原型或者 this 上的
+ *      2. static 是直接在 function 上 . 出来的
+ *      3. private 是定义在局部作用域中的，类似于闭包
  */
 function MyPromise(executor) {
   // 状态
@@ -420,6 +425,25 @@ MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
   return promise2
 }
 
+// resolve 静态方法
+MyPromise.resolve = (parameter) => {
+  // 如果传入的是一个 Promise 则直接 return
+  if (parameter instanceof MyPromise) {
+    return parameter
+  }
+  // 常规方式处理
+  return new MyPromise(resolve => {
+    resolve(parameter)
+  })
+}
+
+// reject 静态方法
+MyPromise.reject = (reason) => {
+  return new MyPromise((resolve, reject) => {
+    reject(reason)
+  })
+}
+
 /**
  * 对 resolve 的返回结果进行处理
  * 传入 promise 是为了解决实现步骤 5 中的问题:  then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
@@ -569,10 +593,13 @@ function resolvePromise(promise, value, resolve, reject) {
 // })
 
 // 7. 将 then 的 callback 改为可选参数
-const promise = new MyPromise((resolve, reject) => {
-  // resolve('success')
-  reject('reject')
+// const promise = new MyPromise((resolve, reject) => {
+//   // resolve('success')
+//   reject('reject')
+// })
+// promise.then().then().then().then(value => console.log(value), reason => console.log(reason))
+
+// 8. 实现 resolve 和 reject 的静态调用
+MyPromise.resolve().then(() => {
+  console.log(0)
 })
-promise.then().then().then().then(value => console.log(value), reason => console.log(reason))
-
-
