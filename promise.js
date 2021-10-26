@@ -336,7 +336,12 @@ function MyPromise(executor) {
 MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
   // 将 resolvedCallback 和 rejectedCallback 改为可选参数
   resolvedCallback = typeof resolvedCallback === 'function' ? resolvedCallback : value => value
-  rejectedCallback = typeof rejectedCallback === 'function' ? rejectedCallback : () => { throw this.reason }
+  /**
+   * 问: rejectedCallback : () => { throw this.reason } 这里的 throw this.reason, 为什么不像 resolvedCallback 那样直接 return reason, 而是 throw reason?
+   * 答: 如果说这个 Promise 失败了， 同时 rejectedCallback 也没有传， 这样这个错误就会被吞掉。 
+   *     而采用 throw 则会将 resolvedCallback 的状态也置为失败， 这样在外界就可以收到 resolvedCallback 的结果， 可以做出对应的处理。
+   */
+  rejectedCallback = typeof rejectedCallback === 'function' ? rejectedCallback : (reason) => { throw reason }
 
   // 为了链式调用，这里直接创建一个 Promise 实例，并将实例 return 出去。
   const promise2 = new MyPromise((resolve, reject) => {
@@ -445,23 +450,28 @@ MyPromise.reject = (reason) => {
 }
 
 /**
- * 对 resolve 的返回结果进行处理
- * 传入 promise 是为了解决实现步骤 5 中的问题:  then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+ * 对 then 的参数(resolvedCallback 和 rejectedCallback)的返回结果进行处理
+ *  1. 传入 promise 是为了解决实现步骤 5 中的问题:  then 方法链式调用识别 then 的 callback 中 return 的 Promise 是否是自己。
+ *  2. 解决值穿透的问题:
+ *    1. 当 then 返回的是一个普通值的时候， 要调用一次 promise2 的 resolve, 从而将 promise2 的 value 设置为 then 的返回值
+ *    2. 当 then 返回的是一个 promise 的时候， 则调用它自身的 then 方法， 根据这个新的 promise 的结果来设置 promise2 的 value/reason. 
+ *       如果返回的 promise 的状态已经是 resolved, 也就是说在这个 promise 中已经调用了 resolve 方法， 这个时候只需要调用 promise2 的 resolve 方法， 将新返回的 promise 的 value 赋值给 promise2 的 value.
+ *       从而实现值穿透。
  */
-function resolvePromise(promise, value, resolve, reject) {
+function resolvePromise(promise, callbackRes, resolve, reject) {
   // 如果相等了则说明 callback 中 return 的是自身。
-  if (promise === value) {
+  if (promise === callbackRes) {
     return reject(new TypeError('Chaining cycle detected for promise #<Promise>'))
   }
   // 返回值如果也是 Promise 则调用其 then 方法，等待得到 Promise 的结果
-  if (value instanceof MyPromise) {
+  if (callbackRes instanceof MyPromise) {
     // 等待 Promise 的结果，交给 .then 来处理。（递归调用 then 方法）
-    value.then(resolve, reject)
+    callbackRes.then(resolve, reject)
   }
   // 返回值是普通值
   else {
     // 将结果直接返回
-    resolve(value)
+    resolve(callbackRes)
   }
 }
 
