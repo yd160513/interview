@@ -82,7 +82,7 @@
  *      定义缓存，用来存储成功和失败的回调函数。
  *      在 then 中判断 resolvedCallback/rejectedCallback 如果 state 是 pending 状态的话则将其进行缓存
  *      在 resolve/reject 中判断如果有缓存则执行缓存。
- *  3. then 方法多次调用
+ *  3. then 方法多次调用。 如果执行器中的是同步的则直接返回当前值就行；如果是异步回调，则需要分别保存成功和失败的回调。
  *    eg: 
  *      const promise = new MyPromise((resolve, reject) => {
  *        setTimeout(() => {
@@ -246,6 +246,10 @@ function MyPromise(executor) {
   }
 }
 
+/**
+ * 这里的 then 不可以改为箭头函数。
+ *  如果是箭头函数， 箭头函数中的 this 会指向谁？
+ */ 
 MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
   // 将 resolvedCallback 和 rejectedCallback 改为可选参数
   resolvedCallback = typeof resolvedCallback === 'function' ? resolvedCallback : value => value
@@ -350,6 +354,10 @@ MyPromise.resolve = (parameter) => {
     return parameter
   }
   // 常规方式处理
+  // return new MyPromise((resolve, reject) => {
+  //   resolve(param)
+  // })
+  // 等同于上边的
   return new MyPromise(resolve => {
     resolve(parameter)
   })

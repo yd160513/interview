@@ -487,12 +487,126 @@ function curry(fn, ...args) {
 }
 
 const add3 = curry(_add)
-console.log(add3(1, 2, 3, 4, 5))
-console.log(add3(1, 2, 3)(4, 5))
-console.log(add3(1)(2)(3)(4)(5))
+// console.log(add3(1, 2, 3, 4, 5))
+// console.log(add3(1, 2, 3)(4, 5))
+// console.log(add3(1)(2)(3)(4)(5))
 
 // ------------------------------------------------------------------------------------------------------------------------
+// 手写 Promise
+function MyPromise(actuator) {
+  this.status = 'pending'
+  this.value = null
+  this.reason = null
+  this.resolvedCache = []
+  this.rejectedCache = []
 
+  this.resolve = (value) => {
+    if (this.status === 'pending') {
+      this.status = 'resolved'
+      this.value = value
+      while (this.resolvedCache.length) {
+        this.resolvedCache.shift()(this.value)
+      }
+    }
+  }
+  this.reject = (reason) => {
+    if (this.status === 'pending') {
+      this.status = 'rejected'
+      this.reason = reason
+      while (this.rejectedCache.length) {
+        this.rejectedCache.shift()(this.reason)
+      }
+    }
+  }
+
+  try {
+    actuator(this.resolve, this.reject)
+  } catch (error) {
+    this.reject(error)
+  }
+}
+
+MyPromise.prototype.then = function (resolvedCallback, rejectedCallback) {
+  const promise2 = new MyPromise((resolve, reject) => {
+    if (this.status === 'resolved') {
+      queueMicrotask(() => {
+        const res = resolvedCallback(this.value)
+        // 这里直接使用 promise2 会报错: Cannot access 'p1' before initialization
+        // 所以这里需要引入一个微任务: queueMicrotask
+        resolvePromise(promise2, res, resolve, reject)
+      })
+    } else if (this.status === 'rejected') {
+      queueMicrotask(() => {
+        const res = rejectedCallback(this.reason)
+        resolvePromise(promise2, res, resolve, reject)
+      })
+    } else if (this.status === 'pending') {
+      this.resolvedCache.push(() => {
+        queueMicrotask(() => {
+          try {
+            const res = resolvedCallback(this.value)
+            resolvePromise(promise2, res, resolve, reject)
+          } catch (error) {
+            this.reject(error)
+          }
+        })
+      })
+      this.rejectedCache.push(() => {
+        queueMicrotask(() => {
+          try {
+            const res = rejectedCallback(this.reason)
+            resolvePromise(promise2, res, resolve, reject)
+          } catch (error) {
+            this.reject(error)
+          }
+        })
+      })
+    }
+  })
+  return promise2
+}
+
+function resolvePromise(promise2, value, resolve, reject) {
+  if (promise2 === value) {
+    return reject(new TypeError('Chaining cycle detected for promise #<Promise>'))
+  }
+  if (value instanceof MyPromise) {
+    value.then(resolve, reject)
+  } else {
+    resolve(value)
+  }
+}
+
+const promise = new MyPromise((resolve, reject) => {
+  // const promise = new Promise((resolve, reject) => {
+  resolve(`success`)
+})
+const p1 = promise.then(value => {
+  console.log(1)
+  console.log(`resolve => ${value}`)
+  return p1 // TypeError: Chaining cycle detected for promise #<Promise>
+})
+p1.then(value => {
+  console.log(2)
+  console.log(`resolve => ${value}`)
+}, reason => {
+  console.log(3)
+  console.log(reason.message)
+})
+
+// const promise = new MyPromise((resolve, reject) => {
+//   resolve(100)
+// })
+// const p1 = promise.then(value => {
+//   console.log(value)
+//   return p1
+// }, reason => {
+//   console.log(`error => ${reason}`)
+// }).then(value => {
+//   console.log(`success => ${value}`)
+// }, reason => {
+//   console.log(`error2 => ${reason}`)
+// })
 
 // ------------------------------------------------------------------------------------------------------------------------
 
