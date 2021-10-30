@@ -17,6 +17,10 @@
     // xhr.open('GET', 'http://localhost:4000/getData', true)
 
     // 服务器默认只支持 get、head、post 简单请求，不支持复杂请求。所以需要在服务器设置，否则会报错: Method PUT is not allowed by Access-Control-Allow-Methods in preflight response.
+    // 简单请求的两个条件: 
+    //    1. 三个请求方式之一: get、post、head 
+    //    2. Content-Type 的值仅限于其中之一: text/plain、multipart/form-data、application/x-www-form-urlencoded
+    // 负责请求的 CORS 请求会在正式通信之前，增加一次 HTTP 查询请求， 称为“预检”请求， 该请求是 OPTIONS 类型，通过该请求来知道服务器是否允许跨域请求。
     // 这里发送了一个 PUT 请求，在控制台中可以看到在 PUT 请求之前还会有一个 OPTIONS 请求，这个是为了校验是否可以跨域的请求。
     // 这个 OPTIONS 请求会间隔一段时间请求一次，在服务器也可以设置这个时间
     xhr.open('PUT', 'http://localhost:4000/getData', true)
