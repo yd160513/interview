@@ -654,22 +654,32 @@ function myNew(Fun) {
 }
 // console.log(myNew(Cat, '123', 123))
 // ------------------------------------------------------------------------------------------------------------------------
-var a = [1, 2, 3]
-console.log(a.constructor === Array) // true
-console.log(a.constructor === Object) // false
+// var a = [1, 2, 3]
+// console.log(a.constructor === Array) // true
+// console.log(a.constructor === Object) // false
 
-var b = { name: 'test' }
-console.log(b.constructor === Array) // false
-console.log(b.constructor === Object) // true
+// var b = { name: 'test' }
+// console.log(b.constructor === Array) // false
+// console.log(b.constructor === Object) // true
 
-console.log([].__proto__ === [].constructor.prototype) // true
-console.log([].__proto__ === Array.prototype) // true
-// 同理
-console.log([].__proto__.constructor === Array) // true
-console.log([].__proto__.constructor === Object) // false
+// console.log([].__proto__ === [].constructor.prototype) // true
+// console.log([].__proto__ === Array.prototype) // true
+// // 同理
+// console.log([].__proto__.constructor === Array) // true
+// console.log([].__proto__.constructor === Object) // false
 
 // ------------------------------------------------------------------------------------------------------------------------
+// reduce()
+// 求和
+// const res = [1, 2, 3, 4, 5].reduce((count, cur) => count + cur, 0)
+// console.log(res)
 
+// 统计数组中每个元素出现的次数
+const res = [1, 1, 1, 1, 1, 3, 3, 4, 2, 5, 8, 9, 1, 3, 4, 1, 2, 2, 2, 9].reduce((count, cur) => {
+  count[cur] ? count[cur]++ : count[cur] = 1
+  return count
+}, {})
+console.log(res)
 
 // ------------------------------------------------------------------------------------------------------------------------
 
