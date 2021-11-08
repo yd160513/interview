@@ -118,9 +118,3 @@ function getMaxCountVal(str) {
 }
 
 console.log(getMaxCountVal(str))
-
-// 统计数组中每个元素出现的次数
-const res = [1, 1, 1, 1, 1, 3, 3, 4, 2, 5, 8, 9, 1, 3, 4, 1, 2, 2, 2, 9].reduce((count, cur) => {
-  count[cur] ? count[cur]++ : count[cur] = 1
-  return count
-}, {})
