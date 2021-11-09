@@ -233,7 +233,7 @@ function unique(arr) {
   return [...new Set(arr)]
 }
 
-const arr = [1, 1, 1, 2, 3, 4, 5, 6, 99, 0, 2, 44, 2, 333, 444, 9, 9, 9]
+// const arr = [1, 1, 1, 2, 3, 4, 5, 6, 99, 0, 2, 44, 2, 333, 444, 9, 9, 9]
 // console.log(unique(arr))
 
 // ------------------------------------------------------------------------------------------------------------------------
@@ -675,20 +675,122 @@ function myNew(Fun) {
 // console.log(res)
 
 // 统计数组中每个元素出现的次数
-const res = [1, 1, 1, 1, 1, 3, 3, 4, 2, 5, 8, 9, 1, 3, 4, 1, 2, 2, 2, 9].reduce((count, cur) => {
-  count[cur] ? count[cur]++ : count[cur] = 1
-  return count
-}, {})
-console.log(res)
+// const res = [1, 1, 1, 1, 1, 3, 3, 4, 2, 5, 8, 9, 1, 3, 4, 1, 2, 2, 2, 9].reduce((count, cur) => {
+//   count[cur] ? count[cur]++ : count[cur] = 1
+//   return count
+// }, {})
+// console.log(res)
 
 // ------------------------------------------------------------------------------------------------------------------------
+// function getMax(arr) {
+//   let maxValue = arr[0]
+//   for(let i = 0; i < arr.length; i++) {
+//     if (arr[i] > maxValue) {
+//       maxValue = arr[i]
+//     }
+//   }
+//   return maxValue
+// }
 
+// function getMax(arr) {
+//   return Math.max.call(null, ...arr)
+// }
+
+// function getMax(arr) {
+//   return arr.reduce((prevVal, currVal) => {
+//     return prevVal > currVal ? prevVal : currVal
+//   })
+// }
+
+function getMax(arr) {
+  arr = arr.sort((a, b) => {
+    return a - b
+  })
+  return arr[arr.length - 1]
+}
+// const arr = [2, 3, 4, 5, 6, 9, 10, 0, 100]
+// console.log(getMax(arr))
 
 // ------------------------------------------------------------------------------------------------------------------------
+// function quchong(arr) {
+//   const res = []
+//   for (let index = 0; index < arr.length; index++) {
+//     const element = arr[index];
+//     if (!res.includes(element)) {
+//       res.push(element)
+//     }
+//   }
+//   return res
+// }
 
+// function quchong(arr) {
+//   const res = arr.reduce((prevVal, currVal) => {
+//     if (!prevVal.includes(currVal)) {
+//       prevVal.push(currVal)
+//     }
+//     return prevVal
+//   }, [])
+//   return res
+// }
+
+function quchong(arr) {
+  return Array.from(new Set(arr))
+}
+
+// const arr = [1, 1, 1, 1, 1, 1, 1, 5, 3, 2, 2, 2, 0, 8, 8, 90]
+// console.log(quchong(arr))
 
 // ------------------------------------------------------------------------------------------------------------------------
+/**
+ * 闭包的作用
+ */
+// 缓存的容器
+const cachedBox = (() => {
+  const cache = {}
+  return {
+    searchBox: (id) => {
+      // 如果在内存中，直接返回
+      if (id in cache) {
+        return `缓存中查找的结果为: ${cache[id]}`
+      }
+      // 经过一段很耗时的 dealFn() 函数处理
+      const result = dealFn(id)
+      // 更新缓存的结果
+      cache[id] = result
+      // 返回计算的结果
+      return `计算返回的查找结果为: ${cache[id]}`
+    }
+  }
+})()
+// 处理很耗时的函数
+function dealFn(id) {
+  console.log(`这是一段很耗时的操作`)
+  return id
+}
+// 两次调用 searchBox() 函数
+console.log(cachedBox.searchBox(1)) // 计算返回的查找结果为: 1
+console.log(cachedBox.searchBox(1)) // 缓存中查找的结果为: 1
 
+// 使用数组模仿栈的实现
+const stack = (() => {
+  const arr = []
+  return {
+    push: (value) => {
+      arr.push(value)
+    },
+    pop: () => {
+      return arr.pop()
+    },
+    size: () => {
+      return arr.length
+    }
+  }
+})()
+stack.push('abc')
+stack.push('def')
+console.log(stack.size()) // 2
+console.log(stack.pop())
+console.log(stack.size()) // 1
 
 // ------------------------------------------------------------------------------------------------------------------------
 
