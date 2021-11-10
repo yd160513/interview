@@ -793,13 +793,167 @@ console.log(stack.pop())
 console.log(stack.size()) // 1
 
 // ------------------------------------------------------------------------------------------------------------------------
+// 构造函数中定义实例的属性
+// function Person(name, age, address) {
+//   this.name = name
+//   this.age = age
+//   this.address = address
+// }
+// // 原型中添加实例共享的函数
+// Person.prototype.getName = function() {
+//   return this.name
+// }
+// // 生成两个实例
+// const person = new Person('king', 11, {
+//   name: '北京',
+//   code: '123'
+// })
+// const person2 = new Person('king2', 12, {
+//   name: '上海',
+//   code: '222'
+// })
+// // 输出实例初始的 name 属性值
+// console.log(person.name)
+// console.log(person2.name)
+// // 改变一个实例的属性值
+// person.address.name = '广州'
+// person.address.code = '111111'
+// // 不影响另一个实例的属性值
+// console.log(person2.address.name)
+// console.log(person2.address.code)
+// // 不同的实例共享相同的函数，因此在比较时是相等的
+// console.log(person.getName === person2.getName)
+// // 改变一个实例的属性，函数仍能正常执行
+// person2.name = 'king3'
+// console.log(person.getName())
+// console.log(person2.getName())
+
+// 构造函数中定义实例的属性
+// function Person(name, age, address) {
+//   this.name = name
+//   this.age = age
+//   this.address = address
+//   if (!Person._initalized) {
+//     // 原型中添加实例共享的函数
+//     Person.prototype.getName = function() {
+//       return this.name
+//     }
+//     Person._initialized = true
+//   }
+// }
+// // 生成两个实例
+// const person = new Person('king', 11, {
+//   name: '北京',
+//   code: '123'
+// })
+// const person2 = new Person('king2', 12, {
+//   name: '上海',
+//   code: '222'
+// })
+// // 输出实例初始的 name 属性值
+// console.log(person.name) // king
+// console.log(person2.name) // king2
+// // 改变一个实例的属性值
+// person.address.name = '广州'
+// person.address.code = '111111'
+// // 不影响另一个实例的属性值
+// console.log(person2.address.name) // 上海
+// console.log(person2.address.code) // 222
+// // 不同的实例共享相同的函数，因此在比较时是相等的
+// console.log(person.getName === person2.getName) // true
+// // 改变一个实例的属性，函数仍能正常执行
+// person2.name = 'king3'
+// console.log(person.getName()) // king2
+// console.log(person2.getName()) // king3
 
 
 // ------------------------------------------------------------------------------------------------------------------------
+// function Person1() {}
+// Person1.prototype = {
+//   // constructor: Person1,
+//   name: '',
+//   age: 0,
+//   sayName: function() {
+//     console.log(this.name)
+//   }
+// }
+// console.log(Person1.prototype.constructor === Object) // true
+// console.log(Person1.prototype.constructor === Person1) // false
+// function Person1() {}
+// const person1 = new Person1()
+// Person1.prototype = {
+//   name: '',
+//   age: 0,
+//   sayName: function() {
+//     console.log(this.name)
+//   }
+// }
+// const Person3 = new Person1()
+// person1.sayName() // person1.sayName is not a function
+// person3.sayName()
 
+function Person() {}
+const person = new Person()
+console.log(person.__proto__ === Person.prototype) // true
+console.log(person.__proto__.__proto__ === Person.prototype.__proto__) // true
+console.log(person.__proto__.__proto__.__proto__ === Object.prototype.__proto__) // true
+console.log(Object.prototype.__proto__) // null
+console.log(person.__proto__.__proto__.__proto__) // null
 
 // ------------------------------------------------------------------------------------------------------------------------
+// 继承
+// 定义一个父类 Animal 
+// function Animal(name) {
+//   // 属性
+//   this.type = 'Animal'
+//   this.name = name || '动物'
+//   // 实例函数
+//   this.sleep = function() {
+//     console.log(`${this.name}正在睡觉!`)
+//   }
+// }
+// Animal.prototype.eat = function(food) {
+//   console.log(`${this.name}正在吃${food}`)
+// }
+// // 原型链继承: 重写子类 prototype 属性，将其指向父类的实例
+// function Cat(name) {
+//   this.name = name
+// }
+// // 原型链继承
+// Cat.prototype = new Animal()
+// /**
+//  * 核心: 将 Cat 的构造函数指向自身
+//  *  如果不将 Cat 原型对象的 constructor 属性指向自身的构造函数的话，那么将会指向父类的 Animal 的构造函数:
+//  *    通过原型继承更改了 Cat.prototype, 将 Cat 的原型改为了 Animal 的实例。
+//  *    这个时候通过 Cat.prototype 取到的是 Animal 的实例，也就是说 Cat.prototype.constructor 其实是 Animal 实例的 constructor，自然而然也就指向了 Animal。
+//  */
+// Cat.prototype.constructor = Cat
+// const cat = new Cat('加菲猫')
+// console.log(cat.type) // Animal
+// console.log(cat.name) // 加菲猫
+// cat.sleep() // 加菲猫正在睡觉!
+// cat.eat('猫粮') // 加菲猫正在吃猫粮
 
+// 父类
+function Animal() {
+  this.feature = [1, 2, 3]
+}
+// 子类
+function Cat() {}
+// 原型链继承
+Cat.prototype = new Animal()
+Cat.prototype.constructor = Cat
+// 生成实例
+const cat1 = new Cat()
+const cat2 = new Cat()
+// 输出两个实例的值
+console.log(cat1.feature)
+console.log(cat2.feature)
+// 改变 cat1 实例的 feature 的值
+cat1.feature.push(4)
+// 再次输出两个实例的值，发现实例 cat2 也受到了影响
+console.log(cat1.feature) // [1, 2, 3, 4]
+console.log(cat2.feature) // [1, 2, 3, 4]
 
 // ------------------------------------------------------------------------------------------------------------------------
 
