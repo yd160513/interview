@@ -892,7 +892,7 @@ console.log(stack.size()) // 1
 // person1.sayName() // person1.sayName is not a function
 // person3.sayName()
 
-function Person() {}
+function Person() { }
 const person = new Person()
 console.log(person.__proto__ === Person.prototype) // true
 console.log(person.__proto__.__proto__ === Person.prototype.__proto__) // true
@@ -935,25 +935,168 @@ console.log(person.__proto__.__proto__.__proto__) // null
 // cat.eat('猫粮') // 加菲猫正在吃猫粮
 
 // 父类
-function Animal() {
-  this.feature = [1, 2, 3]
+// function Animal() {
+//   this.feature = [1, 2, 3]
+// }
+// // 子类
+// function Cat() {}
+// // 原型链继承
+// Cat.prototype = new Animal()
+// Cat.prototype.constructor = Cat
+// // 生成实例
+// const cat1 = new Cat()
+// const cat2 = new Cat()
+// // 输出两个实例的值
+// console.log(cat1.feature)
+// console.log(cat2.feature)
+// // 改变 cat1 实例的 feature 的值
+// cat1.feature.push(4)
+// // 再次输出两个实例的值，发现实例 cat2 也受到了影响
+// console.log(cat1.feature) // [1, 2, 3, 4]
+// console.log(cat2.feature) // [1, 2, 3, 4]
+
+// 构造函数继承
+// 定义一个父类 Animal 
+// function Animal(name) {
+//   // 属性
+//   this.type = 'Animal'
+//   this.name = name || '动物'
+//   // 实例函数
+//   this.sleep = function () {
+//     console.log(`${this.name}正在睡觉!`)
+//   }
+// }
+// Animal.prototype.eat = function (food) {
+//   console.log(`${this.name}正在吃${food}`)
+// }
+// // 子类
+// function Cat(name) {
+//   // 核心: 通过 call() 来继承 Animal 的实例的属性和函数
+//   Animal.call(this)
+//   this.name = name
+// }
+// // 生成子类实例
+// const cat = new Cat('tony')
+// cat.sleep() // tony正在睡觉!
+// /**
+//  * 不能调用父类原型函数
+//  *    因为子类并没有通过某种方式来调用父类原型上的函数。
+//  *    通俗点说: 通过 call 的调用只是将父类实例上的属性和方法绑定到了子类上，而父类原型和子类并没有什么关系
+//  */
+// // cat.eat() // cat.eat is not a function
+// console.log(cat instanceof Cat) // true
+// console.log(cat instanceof Animal) // false
+
+// 复制继承
+// 定义一个父类 Animal 
+// function Animal(name) {
+//   // 属性
+//   this.type = 'Animal'
+//   this.name = name || '动物'
+//   // 实例函数
+//   this.sleep = function () {
+//     console.log(`${this.name}正在睡觉!`)
+//   }
+// }
+// Animal.prototype.eat = function (food) {
+//   console.log(`${this.name}正在吃${food}`)
+// }
+// // 子类
+// function Cat(name) {
+//   const animal = new Animal(name)
+//   // 遍历父类实例，将其所有的属性和函数添加到子类中
+//   for (const key in animal) {
+//     const element = animal[key];
+//     // 实例属性和函数
+//     if (Object.hasOwnProperty.call(animal, key)) {
+//       this[key] = element
+//     }
+//     // 原型对象上的属性和方法
+//     else {
+//       Cat.prototype[key] = element
+//     }
+//   }
+//   this.name = name
+// }
+// Cat.prototype.eat = function (food) {
+//   console.log(`子类中的: ${this.name}正在吃${food}`)
+// }
+// // 生成子类实例
+// const cat = new Cat('tony')
+// console.log(cat.name) // tony
+// cat.sleep() // tony正在睡觉!
+// /**
+//  * 这里的 eat() 为什么执行的是父类中的? 
+//  *    因为代码执行顺序的问题，对子类原型的赋值: Cat.prototype.eat = function (food) { } 要优先与复制继承，所以在这里赋值之后，后续复制继承的时候又将其覆盖掉了
+//  */
+// cat.eat('猫粮') // tony正在吃猫粮
+// console.log(cat instanceof Cat) // true
+// console.log(cat instanceof Animal) // false
+
+// 组合继承
+// 定义一个父类 Animal 
+// function Animal(name) {
+//   // 属性
+//   this.type = 'Animal'
+//   this.name = name || '动物'
+//   // 实例函数
+//   this.sleep = function() {
+//     console.log(`${this.name}正在睡觉!`)
+//   }
+// }
+// Animal.prototype.eat = function(food) {
+//   console.log(`${this.name}正在吃${food}`)
+// }
+// function Cat(name) {
+//   // 构造函数继承
+//   Animal.call(this)
+//   this.name = name
+// }
+// // 原型链继承
+// Cat.prototype = new Animal()
+// Cat.prototype.constructor = Cat
+// const cat = new Cat('加菲猫')
+// console.log(cat.type) // Animal
+// console.log(cat.name) // 加菲猫
+// cat.sleep() // 加菲猫正在睡觉!
+// cat.eat('猫粮') // 加菲猫正在吃猫粮
+// console.log(cat instanceof Cat) // true
+// console.log(cat instanceof Animal) // true
+
+function Animal(name) {
+  // 属性
+  this.type = 'Animal'
+  this.name = name || '动物'
+  // 实例函数
+  this.sleep = function() {
+    console.log(`${this.name}正在睡觉!`)
+  }
 }
-// 子类
-function Cat() {}
-// 原型链继承
-Cat.prototype = new Animal()
-Cat.prototype.constructor = Cat
-// 生成实例
-const cat1 = new Cat()
-const cat2 = new Cat()
-// 输出两个实例的值
-console.log(cat1.feature)
-console.log(cat2.feature)
-// 改变 cat1 实例的 feature 的值
-cat1.feature.push(4)
-// 再次输出两个实例的值，发现实例 cat2 也受到了影响
-console.log(cat1.feature) // [1, 2, 3, 4]
-console.log(cat2.feature) // [1, 2, 3, 4]
+Animal.prototype.eat = function(food) {
+  console.log(`${this.name}正在吃${food}`)
+}
+function Cat(name) {
+  // 构造函数继承
+  Animal.call(this)
+  this.name = name
+}
+(function() {
+  // 设置任意函数 Super()
+  const Super = function() {}
+  /**
+   * 关键性语句: 
+   *    Super() 函数的原型指向父类 Animal 的原型，去掉父类的实例属性。
+   *    只取父类的原型属性，过滤掉父类的实例属性，从而避免了父类的实例属性。
+   */
+  Super.prototype = Animal.prototype
+  Cat.prototype = new Super()
+  Cat.prototype.constructor = Cat
+})()
+const cat = new Cat('加菲猫')
+console.log(cat.type) // Animal
+console.log(cat.name) // 加菲猫
+cat.sleep() // 加菲猫正在睡觉!
+cat.eat('猫粮') // 加菲猫正在吃猫粮
 
 // ------------------------------------------------------------------------------------------------------------------------
 
