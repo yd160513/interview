@@ -903,36 +903,60 @@ console.log(person.__proto__.__proto__.__proto__) // null
 // ------------------------------------------------------------------------------------------------------------------------
 // 继承
 // 定义一个父类 Animal 
-// function Animal(name) {
-//   // 属性
-//   this.type = 'Animal'
-//   this.name = name || '动物'
-//   // 实例函数
-//   this.sleep = function() {
-//     console.log(`${this.name}正在睡觉!`)
-//   }
-// }
-// Animal.prototype.eat = function(food) {
-//   console.log(`${this.name}正在吃${food}`)
-// }
-// // 原型链继承: 重写子类 prototype 属性，将其指向父类的实例
-// function Cat(name) {
-//   this.name = name
-// }
-// // 原型链继承
-// Cat.prototype = new Animal()
-// /**
-//  * 核心: 将 Cat 的构造函数指向自身
-//  *  如果不将 Cat 原型对象的 constructor 属性指向自身的构造函数的话，那么将会指向父类的 Animal 的构造函数:
-//  *    通过原型继承更改了 Cat.prototype, 将 Cat 的原型改为了 Animal 的实例。
-//  *    这个时候通过 Cat.prototype 取到的是 Animal 的实例，也就是说 Cat.prototype.constructor 其实是 Animal 实例的 constructor，自然而然也就指向了 Animal。
-//  */
-// Cat.prototype.constructor = Cat
-// const cat = new Cat('加菲猫')
-// console.log(cat.type) // Animal
-// console.log(cat.name) // 加菲猫
-// cat.sleep() // 加菲猫正在睡觉!
-// cat.eat('猫粮') // 加菲猫正在吃猫粮
+function Animal(name) {
+  // 属性
+  this.type = 'Animal'
+  this.name = name || '动物'
+  // 实例函数
+  this.sleep = function() {
+    console.log(`${this.name}正在睡觉!`)
+  }
+}
+Animal.prototype.eat = function(food) {
+  console.log(`${this.name}正在吃${food}`)
+}
+// 原型链继承: 重写子类 prototype 属性，将其指向父类的实例
+function Cat(name) {
+  this.name = name
+}
+// 原型链继承
+Cat.prototype = new Animal()
+/**
+ * 核心: 将 Cat 的构造函数指向自身
+ *  如果不将 Cat 原型对象的 constructor 属性指向自身的构造函数的话，那么将会指向父类的 Animal 的构造函数:
+ *    通过原型继承更改了 Cat.prototype, 将 Cat 的原型改为了 Animal 的实例。
+ *    这个时候通过 Cat.prototype 取到的是 Animal 的实例，也就是说 Cat.prototype.constructor 其实是 Animal 实例的 constructor，自然而然也就指向了 Animal。
+ */
+Cat.prototype.constructor = Cat
+Cat.prototype.eat = function() {
+  console.log('我是子类原型上的 eat')
+}
+const cat = new Cat('加菲猫')
+console.log(cat.type) // Animal
+console.log(cat.name) // 加菲猫
+cat.sleep() // 加菲猫正在睡觉!
+cat.eat('猫粮') // 加菲猫正在吃猫粮
+console.log(cat instanceof Cat) // true
+console.log(cat instanceof Animal) // true
+function myInstanceof(self, target) {
+  // 取到目标类型的原型
+  const prototype = target.prototype
+  // 取到被验证的原型
+  let proto = self.__proto__
+  while (true) {
+    // null | undefined 原型的尽头是 null
+    if (!proto) {
+      return false
+    } else if (prototype === proto) {
+      return true
+    }
+    // 当前循环次上述条件都不符合就继续判断它的原型的原型，直到找到或者原型不存在(找到头了)
+    proto = proto.__proto__
+  }
+}
+
+const myRes = myInstanceof(cat, Cat)
+console.log(myRes)
 
 // 父类
 // function Animal() {
@@ -1063,40 +1087,40 @@ console.log(person.__proto__.__proto__.__proto__) // null
 // console.log(cat instanceof Cat) // true
 // console.log(cat instanceof Animal) // true
 
-function Animal(name) {
-  // 属性
-  this.type = 'Animal'
-  this.name = name || '动物'
-  // 实例函数
-  this.sleep = function() {
-    console.log(`${this.name}正在睡觉!`)
-  }
-}
-Animal.prototype.eat = function(food) {
-  console.log(`${this.name}正在吃${food}`)
-}
-function Cat(name) {
-  // 构造函数继承
-  Animal.call(this)
-  this.name = name
-}
-(function() {
-  // 设置任意函数 Super()
-  const Super = function() {}
-  /**
-   * 关键性语句: 
-   *    Super() 函数的原型指向父类 Animal 的原型，去掉父类的实例属性。
-   *    只取父类的原型属性，过滤掉父类的实例属性，从而避免了父类的实例属性。
-   */
-  Super.prototype = Animal.prototype
-  Cat.prototype = new Super()
-  Cat.prototype.constructor = Cat
-})()
-const cat = new Cat('加菲猫')
-console.log(cat.type) // Animal
-console.log(cat.name) // 加菲猫
-cat.sleep() // 加菲猫正在睡觉!
-cat.eat('猫粮') // 加菲猫正在吃猫粮
+// function Animal(name) {
+//   // 属性
+//   this.type = 'Animal'
+//   this.name = name || '动物'
+//   // 实例函数
+//   this.sleep = function() {
+//     console.log(`${this.name}正在睡觉!`)
+//   }
+// }
+// Animal.prototype.eat = function(food) {
+//   console.log(`${this.name}正在吃${food}`)
+// }
+// function Cat(name) {
+//   // 构造函数继承
+//   Animal.call(this)
+//   this.name = name
+// }
+// (function() {
+//   // 设置任意函数 Super()
+//   const Super = function() {}
+//   /**
+//    * 关键性语句: 
+//    *    Super() 函数的原型指向父类 Animal 的原型，去掉父类的实例属性。
+//    *    只取父类的原型属性，过滤掉父类的实例属性，从而避免了父类的实例属性。
+//    */
+//   Super.prototype = Animal.prototype
+//   Cat.prototype = new Super()
+//   Cat.prototype.constructor = Cat
+// })()
+// const cat = new Cat('加菲猫')
+// console.log(cat.type) // Animal
+// console.log(cat.name) // 加菲猫
+// cat.sleep() // 加菲猫正在睡觉!
+// cat.eat('猫粮') // 加菲猫正在吃猫粮
 
 // ------------------------------------------------------------------------------------------------------------------------
 

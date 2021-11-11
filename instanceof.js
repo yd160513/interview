@@ -19,7 +19,7 @@ function myInstanceof(self, target) {
   // 取到被验证的原型
   let proto = self.__proto__
   while (true) {
-    // null | undefined 原型的尽头是 null
+    // null | undefined, 原型的尽头是 null
     if (!proto) {
       return false
     } else if (prototype === proto) {
@@ -34,3 +34,14 @@ const myRes = myInstanceof([], Array)
 const myRes2 = myInstanceof([], Object)
 console.log(myRes)
 console.log(myRes2)
+console.log('----')
+// 以下可以总结为: 两个基础类型的构造函数相比的情况下都会返回 false；应用类型的构造函数相比都会返回 true
+function Foo() {}
+console.log(myInstanceof(Object, Object)) // true
+console.log(myInstanceof(Function, Function)) // true
+console.log(myInstanceof(Number, Number)) // false
+console.log(myInstanceof(Boolean, Boolean)) // false
+console.log(myInstanceof(String, String)) // false
+console.log(myInstanceof(Function, Object)) // true
+console.log(myInstanceof(Foo, Function)) // true
+console.log(myInstanceof(Foo, Foo)) // false
